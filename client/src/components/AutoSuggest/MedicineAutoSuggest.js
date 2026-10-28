@@ -1,117 +1,107 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import api from '@/utils/api';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Pill, Loader2 } from 'lucide-react';
+import api from '../../utils/api';
 
-export default function MedicineAutoSuggest({
-    value,
-    onChange,
-    onSelect,
-    placeholder = 'Type medicine name...',
-    className = '',
-}) {
+export default function MedicineAutoSuggest({ value, onChange, onSelect, placeholder = 'Medicine name', disabled = false }) {
+    const [query, setQuery] = useState(value || '');
     const [suggestions, setSuggestions] = useState([]);
-    const [isOpen, setIsOpen] = useState(false);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
-    const wrapperRef = useRef(null);
-    const inputRef = useRef(null);
+    const wrapRef = useRef(null);
     const debounceRef = useRef(null);
 
-    // Close dropdown when clicking outside
+    useEffect(() => setQuery(value || ''), [value]);
+
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
+        function handleClickOutside(e) {
+            if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+        }
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Fetch suggestions with debounce
-    useEffect(() => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-
-        if (!value || value.length < 1) {
+    const fetchSuggestions = useCallback(async (q) => {
+        if (!q || q.trim().length < 1) {
             setSuggestions([]);
-            setIsOpen(false);
             return;
         }
+        setLoading(true);
+        try {
+            const res = await api.get('/medicines/search', { params: { q } });
+            const data = res.data?.data || res.data || [];
+            setSuggestions(data);
+        } catch (err) {
+            setSuggestions([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
-        debounceRef.current = setTimeout(async () => {
-            try {
-                const res = await api.get(`/medicines?q=${encodeURIComponent(value)}`);
-                setSuggestions(res.data.data || []);
-                setIsOpen(true);
-                setActiveIndex(-1);
-            } catch (error) {
-                console.error('Auto-suggest error:', error);
-            }
-        }, 300);
+    function handleInputChange(e) {
+        const val = e.target.value;
+        setQuery(val);
+        onChange?.(val);
+        setOpen(true);
+        setActiveIndex(-1);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
+    }
 
-        return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-        };
-    }, [value]);
+    function handleSelect(item) {
+        setQuery(item.name);
+        setOpen(false);
+        setSuggestions([]);
+        onChange?.(item.name);
+        onSelect?.(item);
+    }
 
-    const handleKeyDown = (e) => {
-        if (!isOpen) return;
-
+    function handleKeyDown(e) {
+        if (!open || suggestions.length === 0) return;
         if (e.key === 'ArrowDown') {
             e.preventDefault();
-            setActiveIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : prev));
+            setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1));
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            setActiveIndex((prev) => (prev > 0 ? prev - 1 : -1));
+            setActiveIndex((i) => Math.max(i - 1, 0));
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            if (activeIndex >= 0 && suggestions[activeIndex]) {
-                handleSelect(suggestions[activeIndex]);
-            }
+            if (activeIndex >= 0) handleSelect(suggestions[activeIndex]);
         } else if (e.key === 'Escape') {
-            setIsOpen(false);
+            setOpen(false);
         }
-    };
-
-    const handleSelect = (suggestion) => {
-        onSelect(suggestion);
-        setIsOpen(false);
-        setActiveIndex(-1);
-    };
+    }
 
     return (
-        <div ref={wrapperRef} className="relative">
-            <input
-                ref={inputRef}
-                type="text"
-                className={`input ${className}`}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={() => {
-                    if (suggestions.length > 0) setIsOpen(true);
-                }}
-                placeholder={placeholder}
-                autoComplete="off"
-            />
+        <div className="relative" ref={wrapRef}>
+            <div className="relative">
+                <Pill size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+                <input
+                    className="input pl-10"
+                    placeholder={placeholder}
+                    value={query}
+                    disabled={disabled}
+                    onChange={handleInputChange}
+                    onFocus={() => query && setOpen(true)}
+                    onKeyDown={handleKeyDown}
+                    autoComplete="off"
+                />
+                {loading && <Loader2 size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-400 animate-spin" />}
+            </div>
 
-            {isOpen && suggestions.length > 0 && (
+            {open && suggestions.length > 0 && (
                 <div className="suggest-dropdown">
-                    {suggestions.map((item, index) => (
+                    {suggestions.map((item, i) => (
                         <div
-                            key={item._id}
-                            className={`suggest-item ${index === activeIndex ? 'suggest-item-active' : ''
-                                }`}
-                            onClick={() => handleSelect(item)}
-                            onMouseEnter={() => setActiveIndex(index)}
+                            key={item._id || i}
+                            className={`suggest-item ${i === activeIndex ? 'suggest-item-active' : ''}`}
+                            onMouseDown={() => handleSelect(item)}
+                            onMouseEnter={() => setActiveIndex(i)}
                         >
-                            <span className="font-medium">{item.name}</span>
-                            <span className="text-surface-400 ml-2">({item.company})</span>
-                            {item.sizes && item.sizes.length > 0 && (
-                                <span className="text-xs text-surface-300 ml-2">
-                                    [{item.sizes.join(', ')}]
-                                </span>
-                            )}
+                            <p className="font-semibold text-ink-800 text-sm">{item.name}</p>
+                            <p className="text-xs text-ink-400">{item.company}</p>
                         </div>
                     ))}
                 </div>

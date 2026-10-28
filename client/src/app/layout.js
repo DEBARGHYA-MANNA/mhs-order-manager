@@ -15,27 +15,19 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <MainLayout>{children}</MainLayout>
           <Toaster
-            position="top-right"
+            position="top-center"
             toastOptions={{
               duration: 3000,
               style: {
-                background: '#1e293b',
-                color: '#f8fafc',
-                borderRadius: '12px',
-                fontSize: '14px',
+                background: '#18172a',
+                color: '#f7f7fb',
+                borderRadius: '16px',
+                fontSize: '13.5px',
+                fontWeight: 500,
+                padding: '10px 16px',
               },
-              success: {
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#f8fafc',
-                },
-              },
-              error: {
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#f8fafc',
-                },
-              },
+              success: { iconTheme: { primary: '#1aa876', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#e24d6b', secondary: '#fff' } },
             }}
           />
         </AuthProvider>
