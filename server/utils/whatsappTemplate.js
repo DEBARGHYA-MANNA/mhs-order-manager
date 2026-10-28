@@ -11,7 +11,7 @@
  * Edit the buildMessage function to change the format.
  */
 
-const buildWhatsAppMessage = (order, shopName = 'MHS Medical Store') => {
+const buildWhatsAppMessage = (order, shopName = 'Manna Homeo Society') => {
     const date = new Date(order.orderedAt || order.draftedAt || new Date());
     const formattedDate = date.toLocaleDateString('en-IN', {
         day: '2-digit',

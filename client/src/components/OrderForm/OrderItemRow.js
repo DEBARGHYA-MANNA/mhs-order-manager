@@ -1,120 +1,91 @@
 'use client';
 
+import { X, Hash, Ruler } from 'lucide-react';
 import MedicineAutoSuggest from '../AutoSuggest/MedicineAutoSuggest';
 import CompanyAutoSuggest from '../AutoSuggest/CompanyAutoSuggest';
-import { HiOutlineTrash } from 'react-icons/hi';
 
-const SIZE_OPTIONS = [
-    '5ml', '10ml', '15ml', '20ml', '25ml', '30ml', '50ml', '60ml', '100ml',
-    '200ml', '250ml', '500ml', '1L',
-    '50mg', '100mg', '150mg', '200mg', '250mg', '300mg', '500mg', '650mg',
-    '1g', '5g', '10g', '15g', '20g', '25g', '30g', '50g', '100g',
-    '1 strip', '1 box', '1 bottle', '1 tube', '1 pack',
+const SIZE_PRESETS = [
+    '2ml', '5ml', '10ml', '15ml', '20ml', '30ml', '50ml', '60ml', '100ml', '120ml', '200ml', '500ml', '1L',
+    '5g', '10g', '15g', '20g', '25g', '30g', '50g', '100g',
+    '1 strip', '2 strips', '10 tabs', '15 tabs', '30 tabs',
+    '1 vial', '5 vials', '10 vials',
+    'Small', 'Medium', 'Large',
+    '1 box', '1 unit', '1 piece', 'N/A',
 ];
 
-export default function OrderItemRow({
-    item,
-    index,
-    onChange,
-    onRemove,
-    isSingleCompany,
-    singleCompanyName,
-}) {
-    const handleFieldChange = (field, value) => {
-        onChange(index, { ...item, [field]: value });
-    };
-
-    const handleMedicineSelect = (suggestion) => {
-        onChange(index, {
-            ...item,
-            medicineName: suggestion.name,
-            company: isSingleCompany ? singleCompanyName : suggestion.company,
-            medicineId: suggestion._id,
-            // If suggestion has sizes, keep current or set first one
-            size: item.size || (suggestion.sizes && suggestion.sizes[0]) || '',
+export default function OrderItemRow({ item, index, isSingleCompany, singleCompanyName, onUpdate, onRemove, canRemove }) {
+    function handleMedicineSelect(medicine) {
+        onUpdate({
+            medicineId: medicine._id,
+            medicineName: medicine.name,
+            company: isSingleCompany ? singleCompanyName : medicine.company || item.company,
+            size: item.size || (medicine.sizes && medicine.sizes[0]) || '',
         });
-    };
-
-    const handleCompanySelect = (company) => {
-        handleFieldChange('company', company);
-    };
+    }
 
     return (
-        <div className="flex flex-col sm:flex-row gap-3 p-4 bg-surface-50 rounded-xl border border-surface-100">
-            {/* Row number */}
-            <div className="flex items-center justify-center w-8 h-8 bg-primary-100 text-primary-700 rounded-lg font-semibold text-sm shrink-0 self-start mt-1">
-                {index + 1}
-            </div>
-
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Medicine Name */}
-                <div>
-                    <label className="label">Medicine Name</label>
-                    <MedicineAutoSuggest
-                        value={item.medicineName}
-                        onChange={(val) => handleFieldChange('medicineName', val)}
-                        onSelect={handleMedicineSelect}
-                        placeholder="Type medicine name..."
-                    />
+        <div className="bg-ink-50/60 rounded-[18px] p-4 border border-ink-100">
+            <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold shrink-0 mt-1">
+                    {index + 1}
                 </div>
 
-                {/* Company */}
-                <div>
-                    <label className="label">Company</label>
-                    <CompanyAutoSuggest
-                        value={isSingleCompany ? singleCompanyName : item.company}
-                        onChange={(val) => handleFieldChange('company', val)}
-                        onSelect={handleCompanySelect}
-                        placeholder="Type company name..."
-                        disabled={isSingleCompany}
-                    />
-                </div>
-
-                {/* Size */}
-                <div>
-                    <label className="label">Size</label>
-                    <div className="relative">
-                        <input
-                            type="text"
-                            list={`size-options-${index}`}
-                            className="input"
-                            value={item.size}
-                            onChange={(e) => handleFieldChange('size', e.target.value)}
-                            placeholder="e.g. 10ml"
+                <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                        <label className="label mb-1.5">Medicine Name</label>
+                        <MedicineAutoSuggest
+                            value={item.medicineName}
+                            onChange={(val) => onUpdate({ medicineName: val, medicineId: null })}
+                            onSelect={handleMedicineSelect}
+                            placeholder="e.g. Paracetamol Syrup"
                         />
-                        <datalist id={`size-options-${index}`}>
-                            {SIZE_OPTIONS.map((size) => (
-                                <option key={size} value={size} />
-                            ))}
-                        </datalist>
+                    </div>
+
+                    <div>
+                        <label className="label mb-1.5">Company</label>
+                        <CompanyAutoSuggest
+                            value={isSingleCompany ? singleCompanyName : item.company}
+                            onChange={(val) => onUpdate({ company: val })}
+                            disabled={isSingleCompany}
+                            placeholder="Company / brand"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="label mb-1.5 flex items-center gap-1"><Ruler size={11} /> Size</label>
+                            <input
+                                className="input"
+                                list={`sizes-${index}`}
+                                value={item.size}
+                                onChange={(e) => onUpdate({ size: e.target.value })}
+                                placeholder="10ml"
+                            />
+                            <datalist id={`sizes-${index}`}>
+                                {SIZE_PRESETS.map((s) => (
+                                    <option key={s} value={s} />
+                                ))}
+                            </datalist>
+                        </div>
+                        <div>
+                            <label className="label mb-1.5 flex items-center gap-1"><Hash size={11} /> Qty</label>
+                            <input
+                                type="number"
+                                min="1"
+                                className="input"
+                                value={item.quantity}
+                                onChange={(e) => onUpdate({ quantity: e.target.value })}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {/* Quantity */}
-                <div>
-                    <label className="label">Quantity</label>
-                    <input
-                        type="number"
-                        className="input"
-                        value={item.quantity}
-                        onChange={(e) =>
-                            handleFieldChange('quantity', parseInt(e.target.value) || 1)
-                        }
-                        min="1"
-                        placeholder="Qty"
-                    />
-                </div>
+                {canRemove && (
+                    <button type="button" onClick={onRemove} className="btn-icon btn-ghost shrink-0 mt-1 text-danger hover:bg-danger-bg">
+                        <X size={16} />
+                    </button>
+                )}
             </div>
-
-            {/* Remove button */}
-            <button
-                type="button"
-                onClick={() => onRemove(index)}
-                className="self-start mt-7 p-2 text-surface-400 hover:text-danger hover:bg-red-50 rounded-lg transition-colors"
-                title="Remove item"
-            >
-                <HiOutlineTrash size={18} />
-            </button>
         </div>
     );
 }
