@@ -1,113 +1,110 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import api from '@/utils/api';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Building2, Loader2 } from 'lucide-react';
+import api from '../../utils/api';
 
-export default function CompanyAutoSuggest({
-    value,
-    onChange,
-    onSelect,
-    placeholder = 'Type company name...',
-    disabled = false,
-    className = '',
-}) {
+export default function CompanyAutoSuggest({ value, onChange, placeholder = 'Company name', disabled = false }) {
+    const [query, setQuery] = useState(value || '');
     const [suggestions, setSuggestions] = useState([]);
-    const [isOpen, setIsOpen] = useState(false);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
-    const wrapperRef = useRef(null);
+    const wrapRef = useRef(null);
     const debounceRef = useRef(null);
 
+    useEffect(() => setQuery(value || ''), [value]);
+
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
+        function handleClickOutside(e) {
+            if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+        }
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    useEffect(() => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-
-        if (!value || value.length < 1 || disabled) {
+    const fetchSuggestions = useCallback(async (q) => {
+        if (!q || q.trim().length < 1) {
             setSuggestions([]);
-            setIsOpen(false);
             return;
         }
+        setLoading(true);
+        try {
+            const res = await api.get('/medicines/companies', { params: { q } });
+            const data = res.data?.data || res.data || [];
+            setSuggestions(data);
+        } catch (err) {
+            setSuggestions([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
-        debounceRef.current = setTimeout(async () => {
-            try {
-                const res = await api.get(
-                    `/medicines/companies?q=${encodeURIComponent(value)}`
-                );
-                setSuggestions(res.data.data || []);
-                setIsOpen(true);
-                setActiveIndex(-1);
-            } catch (error) {
-                console.error('Company auto-suggest error:', error);
-            }
-        }, 300);
+    function handleInputChange(e) {
+        const val = e.target.value;
+        setQuery(val);
+        onChange?.(val);
+        setOpen(true);
+        setActiveIndex(-1);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
+    }
 
-        return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-        };
-    }, [value, disabled]);
+    function handleSelect(name) {
+        setQuery(name);
+        setOpen(false);
+        setSuggestions([]);
+        onChange?.(name);
+    }
 
-    const handleKeyDown = (e) => {
-        if (!isOpen) return;
-
+    function handleKeyDown(e) {
+        if (!open || suggestions.length === 0) return;
         if (e.key === 'ArrowDown') {
             e.preventDefault();
-            setActiveIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : prev));
+            setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1));
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            setActiveIndex((prev) => (prev > 0 ? prev - 1 : -1));
+            setActiveIndex((i) => Math.max(i - 1, 0));
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            if (activeIndex >= 0 && suggestions[activeIndex]) {
-                handleSelect(suggestions[activeIndex]);
-            }
+            if (activeIndex >= 0) handleSelect(suggestions[activeIndex]?.name || suggestions[activeIndex]);
         } else if (e.key === 'Escape') {
-            setIsOpen(false);
+            setOpen(false);
         }
-    };
-
-    const handleSelect = (company) => {
-        onSelect(company);
-        setIsOpen(false);
-        setActiveIndex(-1);
-    };
+    }
 
     return (
-        <div ref={wrapperRef} className="relative">
-            <input
-                type="text"
-                className={`input ${className}`}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={() => {
-                    if (suggestions.length > 0) setIsOpen(true);
-                }}
-                placeholder={placeholder}
-                disabled={disabled}
-                autoComplete="off"
-            />
+        <div className="relative" ref={wrapRef}>
+            <div className="relative">
+                <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+                <input
+                    className="input pl-10"
+                    placeholder={placeholder}
+                    value={query}
+                    disabled={disabled}
+                    onChange={handleInputChange}
+                    onFocus={() => query && setOpen(true)}
+                    onKeyDown={handleKeyDown}
+                    autoComplete="off"
+                />
+                {loading && <Loader2 size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-400 animate-spin" />}
+            </div>
 
-            {isOpen && suggestions.length > 0 && (
+            {open && suggestions.length > 0 && (
                 <div className="suggest-dropdown">
-                    {suggestions.map((company, index) => (
-                        <div
-                            key={company}
-                            className={`suggest-item ${index === activeIndex ? 'suggest-item-active' : ''
-                                }`}
-                            onClick={() => handleSelect(company)}
-                            onMouseEnter={() => setActiveIndex(index)}
-                        >
-                            {company}
-                        </div>
-                    ))}
+                    {suggestions.map((item, i) => {
+                        const name = item.name || item;
+                        return (
+                            <div
+                                key={i}
+                                className={`suggest-item ${i === activeIndex ? 'suggest-item-active' : ''}`}
+                                onMouseDown={() => handleSelect(name)}
+                                onMouseEnter={() => setActiveIndex(i)}
+                            >
+                                <p className="font-semibold text-ink-800 text-sm">{name}</p>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

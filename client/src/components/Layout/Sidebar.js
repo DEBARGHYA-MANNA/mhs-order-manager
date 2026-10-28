@@ -1,152 +1,101 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import {
-    HiOutlineHome,
-    HiOutlineClipboardList,
-    HiOutlinePlusCircle,
-    HiOutlineUserGroup,
-    HiOutlineCube,
-    HiOutlineCog,
-    HiOutlineLogout,
-    HiOutlineMenu,
-    HiOutlineX,
-} from 'react-icons/hi';
+    LayoutGrid,
+    ClipboardList,
+    PlusCircle,
+    Users,
+    PackageSearch,
+    Settings,
+    LogOut,
+} from 'lucide-react';
 
 const navItems = [
-    { label: 'Dashboard', href: '/', icon: HiOutlineHome },
-    { label: 'Orders', href: '/orders', icon: HiOutlineClipboardList },
-    { label: 'New Order', href: '/orders/new', icon: HiOutlinePlusCircle },
-    { label: 'Contacts', href: '/contacts', icon: HiOutlineUserGroup },
-    { label: 'Medicines', href: '/medicines', icon: HiOutlineCube },
+    { label: 'Dashboard', href: '/', icon: LayoutGrid },
+    { label: 'Orders', href: '/orders', icon: ClipboardList },
+    { label: 'New Order', href: '/orders/new', icon: PlusCircle },
+    { label: 'Contacts', href: '/contacts', icon: Users },
+    { label: 'Medicines', href: '/medicines', icon: PackageSearch },
 ];
 
 const adminItems = [
-    { label: 'Manage Users', href: '/admin/users', icon: HiOutlineCog },
+    { label: 'Manage Users', href: '/admin/users', icon: Settings },
 ];
 
 export default function Sidebar() {
-    const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
     const { user, logout, isAdmin } = useAuth();
 
-    const isActive = (href) => {
-        if (href === '/') return pathname === '/';
-        return pathname.startsWith(href);
+    const isActive = (href) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
+
+    const NavLink = ({ item }) => {
+        const Icon = item.icon;
+        const active = isActive(item.href);
+        return (
+            <Link
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-2.75 rounded-2xl text-sm font-semibold transition-all duration-200 ${active
+                        ? 'bg-primary-600 text-white shadow-[0_6px_18px_rgba(109,79,224,0.28)]'
+                        : 'text-ink-500 hover:bg-ink-50 hover:text-ink-800'
+                    }`}
+            >
+                <Icon size={19} strokeWidth={2.2} />
+                {item.label}
+            </Link>
+        );
     };
 
     return (
-        <>
-            {/* Mobile toggle button */}
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="fixed top-4 left-4 z-50 lg:hidden btn-ghost p-2 rounded-xl bg-white shadow-card"
-            >
-                {isOpen ? <HiOutlineX size={24} /> : <HiOutlineMenu size={24} />}
-            </button>
-
-            {/* Overlay for mobile */}
-            {isOpen && (
-                <div
-                    className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
-                    onClick={() => setIsOpen(false)}
-                />
-            )}
-
-            {/* Sidebar */}
-            <aside
-                className={`
-        fixed top-0 left-0 h-full w-64 bg-white border-r border-surface-100 z-40
-        transform transition-transform duration-300 ease-in-out
-        lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}
-            >
-                <div className="flex flex-col h-full">
-                    {/* Logo / Brand */}
-                    <div className="px-6 py-6 border-b border-surface-100">
-                        <h1 className="text-xl font-bold text-primary-600">
-                            📦 MHS Orders
-                        </h1>
-                        <p className="text-xs text-surface-400 mt-1">Order Management System</p>
+        <aside className="hidden lg:flex fixed top-4 left-4 bottom-4 w-[250px] flex-col bg-white rounded-[28px] shadow-[0_8px_30px_rgba(40,38,62,0.07)] border border-ink-100 z-30">
+            {/* Brand */}
+            <div className="px-5 py-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary-600 rounded-2xl flex items-center justify-center shadow-[0_6px_16px_rgba(109,79,224,0.35)]">
+                        <span className="text-lg">📦</span>
                     </div>
-
-                    {/* Navigation */}
-                    <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                        {navItems.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={() => setIsOpen(false)}
-                                    className={`
-                    flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                    ${isActive(item.href)
-                                            ? 'bg-primary-50 text-primary-700 shadow-sm'
-                                            : 'text-surface-600 hover:bg-surface-50 hover:text-surface-800'
-                                        }
-                  `}
-                                >
-                                    <Icon size={20} />
-                                    {item.label}
-                                </Link>
-                            );
-                        })}
-
-                        {isAdmin && (
-                            <>
-                                <div className="pt-4 pb-2 px-4">
-                                    <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">
-                                        Admin
-                                    </p>
-                                </div>
-                                {adminItems.map((item) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <Link
-                                            key={item.href}
-                                            href={item.href}
-                                            onClick={() => setIsOpen(false)}
-                                            className={`
-                        flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-                        ${isActive(item.href)
-                                                    ? 'bg-primary-50 text-primary-700 shadow-sm'
-                                                    : 'text-surface-600 hover:bg-surface-50 hover:text-surface-800'
-                                                }
-                      `}
-                                        >
-                                            <Icon size={20} />
-                                            {item.label}
-                                        </Link>
-                                    );
-                                })}
-                            </>
-                        )}
-                    </nav>
-
-                    {/* User section */}
-                    <div className="px-3 py-4 border-t border-surface-100">
-                        <div className="px-4 py-3 rounded-xl bg-surface-50">
-                            <p className="text-sm font-semibold text-surface-800">
-                                {user?.name}
-                            </p>
-                            <p className="text-xs text-surface-400 capitalize">
-                                {user?.role} • {user?.shopName}
-                            </p>
-                        </div>
-                        <button
-                            onClick={logout}
-                            className="flex items-center gap-3 px-4 py-3 mt-2 rounded-xl text-sm font-medium text-danger hover:bg-red-50 transition-all duration-200 w-full"
-                        >
-                            <HiOutlineLogout size={20} />
-                            Logout
-                        </button>
+                    <div>
+                        <h1 className="text-[15px] font-extrabold text-ink-900 leading-tight">MHS Orders</h1>
+                        <p className="text-[10px] text-ink-400 font-semibold uppercase tracking-wider">Order Manager</p>
                     </div>
                 </div>
-            </aside>
-        </>
+            </div>
+
+            {/* Nav */}
+            <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto">
+                {navItems.map((item) => <NavLink key={item.href} item={item} />)}
+
+                {isAdmin && (
+                    <>
+                        <div className="pt-4 pb-1 px-4">
+                            <p className="text-[10px] font-bold text-ink-300 uppercase tracking-[0.1em]">Admin</p>
+                        </div>
+                        {adminItems.map((item) => <NavLink key={item.href} item={item} />)}
+                    </>
+                )}
+            </nav>
+
+            {/* User */}
+            <div className="px-3 pb-4 pt-2">
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-ink-50">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-ink-800 truncate">{user?.name}</p>
+                        <p className="text-[11px] text-ink-400 capitalize truncate">{user?.role}</p>
+                    </div>
+                </div>
+                <button
+                    onClick={logout}
+                    className="flex items-center gap-3 px-4 py-2.5 mt-2 rounded-2xl text-sm font-semibold text-ink-400 hover:bg-danger-bg hover:text-danger transition-all duration-200 w-full"
+                >
+                    <LogOut size={17} />
+                    Sign Out
+                </button>
+            </div>
+        </aside>
     );
 }
